@@ -1,0 +1,156 @@
+diff --git a/node_modules/graphql-passport/lib/GraphQLLocalStrategy.d.ts b/node_modules/graphql-passport/lib/GraphQLLocalStrategy.d.ts
+index 0c561c7..8b577d2 100644
+--- a/node_modules/graphql-passport/lib/GraphQLLocalStrategy.d.ts
++++ b/node_modules/graphql-passport/lib/GraphQLLocalStrategy.d.ts
+@@ -1,16 +1,16 @@
+ import { Strategy as PassportStrategy } from 'passport-strategy';
+ import { Request as ExpressRequest } from 'express';
+ import { PassportContext, InfoArgument } from './types';
+-declare type DoneFn = (error: any, user?: any, info?: InfoArgument) => void;
++export declare type DoneFn = (error: any, user?: any, info?: InfoArgument) => void;
+ declare type VerifyFn = (username: unknown, password: unknown, done: DoneFn) => void;
+ declare type VerifyFnWRequest = <U extends {}, Request extends object = ExpressRequest>(req: Request | PassportContext<U, Request>, username: unknown, password: unknown, done: DoneFn) => void;
+-interface GraphQLLocalStrategyOptions {
++export interface GraphQLLocalStrategyOptions {
+     passReqToCallback?: boolean;
+ }
+-interface GraphQLLocalStrategyOptionsWithRequest extends GraphQLLocalStrategyOptions {
++export interface GraphQLLocalStrategyOptionsWithRequest extends GraphQLLocalStrategyOptions {
+     passReqToCallback: true;
+ }
+-interface GraphQLLocalStrategyOptionsWithoutRequest extends GraphQLLocalStrategyOptions {
++export interface GraphQLLocalStrategyOptionsWithoutRequest extends GraphQLLocalStrategyOptions {
+     passReqToCallback?: false;
+ }
+ declare class GraphQLLocalStrategy<U extends {}, Request extends ExpressRequest = ExpressRequest> extends PassportStrategy {
+diff --git a/node_modules/graphql-passport/lib/index.d.ts b/node_modules/graphql-passport/lib/index.d.ts
+index 5e42512..49422fd 100644
+--- a/node_modules/graphql-passport/lib/index.d.ts
++++ b/node_modules/graphql-passport/lib/index.d.ts
+@@ -1,4 +1,4 @@
+ export { default as buildContext } from './buildContext';
+ export { default as createOnConnect } from './createSubscriptionOnConnect';
+-export { default as GraphQLLocalStrategy } from './GraphQLLocalStrategy';
++export { default as GraphQLLocalStrategy, GraphQLLocalStrategyOptions, GraphQLLocalStrategyOptionsWithRequest, GraphQLLocalStrategyOptionsWithoutRequest, DoneFn } from './GraphQLLocalStrategy';
+ export * from './types';
+diff --git a/node_modules/graphql-passport/lib/types.d.ts b/node_modules/graphql-passport/lib/types.d.ts
+index ca4f933..d14a0f7 100644
+--- a/node_modules/graphql-passport/lib/types.d.ts
++++ b/node_modules/graphql-passport/lib/types.d.ts
+@@ -5,7 +5,7 @@ import { IncomingMessage } from 'http';
+ import { ConnectionContext } from 'subscriptions-transport-ws';
+ export interface AuthInfoTemplate {
+ }
+-declare type SharedPassportContext<UserObjectType extends {}, Credentials extends {}, AuthInfo extends AuthInfoTemplate, Request extends object> = {
++declare type SharedPassportContext<UserObjectType extends {}, Credentials extends {}, AuthInfo extends AuthInfoTemplate, Request extends object, SessionStore extends {}> = {
+     authInfo?: AuthInfo;
+     user?: UserObjectType;
+     getUser(): UserObjectType | undefined;
+@@ -15,10 +15,11 @@ declare type SharedPassportContext<UserObjectType extends {}, Credentials extend
+     isAuthenticated(): boolean;
+     isUnauthenticated(): boolean;
+     authenticate(type: string, credentials: Credentials): Promise<AuthenticateReturn<UserObjectType>>;
++    store?: SessionStore;
+     req: Request;
+ };
+-export declare type PassportContext<UserObjectType extends {}, Credentials extends {}, AuthInfo extends AuthInfoTemplate = AuthInfoTemplate, Request extends object = ExpressRequest> = SharedPassportContext<UserObjectType, Credentials, AuthInfo, Request>;
+-export declare type PassportSubscriptionContext<UserObjectType extends {}, Credentials extends {}, AuthInfo extends AuthInfoTemplate = AuthInfoTemplate, SubscriptionRequest extends object = ConnectionContext> = SharedPassportContext<UserObjectType, Credentials, AuthInfo, SubscriptionRequest>;
++export declare type PassportContext<UserObjectType extends {}, Credentials extends {}, AuthInfo extends AuthInfoTemplate = AuthInfoTemplate, Request extends object = ExpressRequest, SessionStore extends object = {}> = SharedPassportContext<UserObjectType, Credentials, AuthInfo, Request, SessionStore>;
++export declare type PassportSubscriptionContext<UserObjectType extends {}, Credentials extends {}, AuthInfo extends AuthInfoTemplate = AuthInfoTemplate, SubscriptionRequest extends object = ConnectionContext, SessionStore extends object = {}> = SharedPassportContext<UserObjectType, Credentials, AuthInfo, SubscriptionRequest, SessionStore>;
+ export declare type InfoArgument = string | {
+     info: boolean;
+     message?: string;
+diff --git a/node_modules/graphql-passport/src/GraphQLLocalStrategy.ts b/node_modules/graphql-passport/src/GraphQLLocalStrategy.ts
+index 331cde7..bddfd26 100644
+--- a/node_modules/graphql-passport/src/GraphQLLocalStrategy.ts
++++ b/node_modules/graphql-passport/src/GraphQLLocalStrategy.ts
+@@ -3,7 +3,7 @@ import { Strategy as PassportStrategy } from 'passport-strategy';
+ import { Request as ExpressRequest } from 'express';
+ import { PassportContext, InfoArgument } from './types';
+ 
+-type DoneFn = (error: any, user?: any, info?: InfoArgument) => void;
++export type DoneFn = (error: any, user?: any, info?: InfoArgument) => void;
+ type VerifyFn = (username: unknown, password: unknown, done: DoneFn) => void;
+ type VerifyFnWRequest = <U extends {}, Request extends object = ExpressRequest>(
+   req: Request | PassportContext<U, Request>,
+@@ -12,15 +12,15 @@ type VerifyFnWRequest = <U extends {}, Request extends object = ExpressRequest>(
+   done: DoneFn,
+ ) => void;
+ 
+-interface GraphQLLocalStrategyOptions {
++export interface GraphQLLocalStrategyOptions {
+   passReqToCallback?: boolean;
+ }
+ 
+-interface GraphQLLocalStrategyOptionsWithRequest extends GraphQLLocalStrategyOptions {
++export interface GraphQLLocalStrategyOptionsWithRequest extends GraphQLLocalStrategyOptions {
+   passReqToCallback: true;
+ }
+ 
+-interface GraphQLLocalStrategyOptionsWithoutRequest extends GraphQLLocalStrategyOptions {
++export interface GraphQLLocalStrategyOptionsWithoutRequest extends GraphQLLocalStrategyOptions {
+   passReqToCallback?: false;
+ }
+ 
+diff --git a/node_modules/graphql-passport/src/index.ts b/node_modules/graphql-passport/src/index.ts
+index 5e42512..68c7136 100644
+--- a/node_modules/graphql-passport/src/index.ts
++++ b/node_modules/graphql-passport/src/index.ts
+@@ -1,4 +1,8 @@
+ export { default as buildContext } from './buildContext';
+ export { default as createOnConnect } from './createSubscriptionOnConnect';
+-export { default as GraphQLLocalStrategy } from './GraphQLLocalStrategy';
++export { default as GraphQLLocalStrategy,
++	GraphQLLocalStrategyOptions,
++	GraphQLLocalStrategyOptionsWithRequest,
++	GraphQLLocalStrategyOptionsWithoutRequest,
++	DoneFn } from './GraphQLLocalStrategy';
+ export * from './types';
+diff --git a/node_modules/graphql-passport/src/types.ts b/node_modules/graphql-passport/src/types.ts
+index db48872..b1e711e 100644
+--- a/node_modules/graphql-passport/src/types.ts
++++ b/node_modules/graphql-passport/src/types.ts
+@@ -2,6 +2,7 @@ import ws from 'ws';
+ import { Request as ExpressRequest } from 'express';
+ import { IncomingMessage } from 'http';
+ import { ConnectionContext } from 'subscriptions-transport-ws';
++import { Session } from 'inspector';
+ 
+ // tslint:disable-next-line:no-empty-interface
+ export interface AuthInfoTemplate {}
+@@ -11,6 +12,7 @@ type SharedPassportContext<
+   Credentials extends {},
+   AuthInfo extends AuthInfoTemplate,
+   Request extends object,
++  SessionStore extends {}
+ > = {
+   authInfo?: AuthInfo;
+   user?: UserObjectType;
+@@ -26,6 +28,8 @@ type SharedPassportContext<
+ 
+   authenticate(type: string, credentials: Credentials): Promise<AuthenticateReturn<UserObjectType>>;
+ 
++  store?: SessionStore
++
+   req: Request;
+ };
+ 
+@@ -34,14 +38,16 @@ export type PassportContext<
+   Credentials extends {},
+   AuthInfo extends AuthInfoTemplate = AuthInfoTemplate,
+   Request extends object = ExpressRequest,
+-> = SharedPassportContext<UserObjectType, Credentials, AuthInfo, Request>;
++  SessionStore extends object = {}
++> = SharedPassportContext<UserObjectType, Credentials, AuthInfo, Request, SessionStore>;
+ 
+ export type PassportSubscriptionContext<
+   UserObjectType extends {},
+   Credentials extends {},
+   AuthInfo extends AuthInfoTemplate = AuthInfoTemplate,
+   SubscriptionRequest extends object = ConnectionContext,
+-> = SharedPassportContext<UserObjectType, Credentials, AuthInfo, SubscriptionRequest>;
++  SessionStore extends object = {}
++> = SharedPassportContext<UserObjectType, Credentials, AuthInfo, SubscriptionRequest, SessionStore>;
+ 
+ export type InfoArgument =
+   | string

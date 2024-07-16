@@ -1,0 +1,45 @@
+#  Template NodeJS build
+
+#  This template allows you to validate your NodeJS code.
+#  The workflow allows running tests and code linting on the default branch.
+
+# Lint on all branches, test on the develop branch, build and deploy on the main branch
+
+image: node:14.15.4
+
+pipelines:
+  default:
+    - step:
+        name: Lint all javascript files
+        script:
+          - npm install
+          - npm run lint
+        caches:
+          - node
+  branches:
+    main:
+      - step:
+          name: Clean and compile all javascript files
+          script:
+            - npm install
+            - npm run build
+          deployment: staging
+      - step:
+          name: compress the project built files
+          script:
+            - git archive --format=tar.gz main -o kargoline-backend.tar.gz
+          artifacts:
+            - kargoline-backend.tar.gz
+      - step:
+          name: deploy to production
+          deployment: production
+          script:
+            - pipe: atlassian/heroku-deploy:1.2.1
+              variables:
+                    HEROKU_API_KEY: '99e863bb-2d9e-4fb8-b0df-b85ce23e655e'
+                    HEROKU_APP_NAME: 'kargoline'
+                    ZIP_FILE: 'kargoline-backend.tar.gz'
+                    WAIT: 'true'
+                    DEBUG: 'true'
+          caches:
+            - node

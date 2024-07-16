@@ -1,0 +1,19 @@
+{
+	"compilerOptions": {
+	  "typeRoots": [
+        "types", "./node_modules/@types"],
+	  "target": "esnext",
+	  "noImplicitAny": true,
+	  "moduleResolution": "node",
+	  "sourceMap": false,
+	  "outDir": "dist",
+	  "esModuleInterop": true,
+	  "baseUrl": ".",
+	  "allowSyntheticDefaultImports": true,
+	  "declaration": true,
+	  "emitDeclarationOnly": true,
+	  "paths": {
+		"*": ["node_modules/*", "@types/*", "types/*"]
+	  }
+	}
+}
